@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trail Making Test with Noise</title>
+</head>
+<body>
+    <iframe width="100%" height="600px" src="https://www.surveycake.com/s/ow9WV"
+    style="border:#ddd 1px solid;" allowTransparency="true" frameborder="0"></iframe>
+    <!-- 新增播放白噪音的按鈕 -->
+    <button onclick="playWhiteNoise()">播放白噪音</button>
+    <!-- 新增播放粉紅噪音的按鈕 -->
+    <button onclick="playPinkNoise()">播放粉紅噪音</button>
+    <!-- 新增停止播放音訊的按鈕 -->
+    <button onclick="stopWhiteNoise()">停止播放</button>
+    <!-- 新增音量控制滑桿 -->
+    <input type="range" min="0" max="1" step="0.01" value="0" onchange="changeVolume(this.value)">
+     <!-- 新增計算分貝的按鈕 -->
+    <button onclick="calculateDecibels()">計算分貝</button>
+    
+    <script>
+        let bufferSource; // 宣告全域變數以便控制播放
+
+         // 函式：計算分貝
+         function calculateDecibels() {
+            // 取得音量控制滑桿元素
+            const volumeControl = document.querySelector('input[type="range"]');
+            // 取得當前音量值
+            const volume = parseFloat(volumeControl.value);
+            // 將音量值轉換為分貝
+            const decibels = 20 * Math.log10(volume);
+            // 顯示分貝值
+            alert("目前音量（分貝）：" + decibels.toFixed(2));
+        }
+        
+        // 函式：產生白噪音
+        function generateWhiteNoise(lengthInSeconds, sampleRate, volume = 1.0) {
+            const numSamples = lengthInSeconds * sampleRate;
+            const buffer = new Float32Array(numSamples);
+            
+            // 填充緩衝區以生成隨機數值
+            for (let i = 0; i < numSamples; i++) {
+                buffer[i] = (Math.random() * 2 - 1) * volume; // 生成在-1到1之間的隨機數
+            }
+            
+            return buffer;
+        }
+        
+        // 函式：產生粉紅噪音
+        function generatePinkNoise(lengthInSeconds, sampleRate) {
+            const numSamples = lengthInSeconds * sampleRate;
+            const buffer = new Float32Array(numSamples);
+            let b0, b1, b2, b3, b4, b5, b6;
+            b0 = b1 = b2 = b3 = b4 = b5 = b6 = 0.0;
+            
+            for (let i = 0; i < numSamples; i++) {
+                const white = Math.random() * 2 - 1; // 白噪音
+                b0 = 0.99886 * b0 + white * 0.0555179;
+                b1 = 0.99332 * b1 + white * 0.0750759;
+                b2 = 0.96900 * b2 + white * 0.1538520;
+                b3 = 0.86650 * b3 + white * 0.3104856;
+                b4 = 0.55000 * b4 + white * 0.5329522;
+                b5 = -0.7616 * b5 - white * 0.0168980;
+                buffer[i] = (b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362) * 0.11; // 粉紅噪音
+                buffer[i] *= 0.7; // 調整音量
+                b6 = white * 0.115926;
+            }
+            
+            return buffer;
+        }
+        
+        // 函式：播放白噪音
+        function playWhiteNoise() {
+            // 生成白噪音資料
+            const lengthInSeconds = 5; // 聲音長度（秒）
+            const sampleRate = 44100; // 取樣率（每秒取樣次數）
+            const volume = 0.25; // 調整音量（0.0 到 1.0）
+            const whiteNoise = generateWhiteNoise(lengthInSeconds, sampleRate, volume);
+            
+            // 將白噪音資料轉換為音訊源節點
+            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            bufferSource = audioCtx.createBufferSource();
+            const audioBuffer = audioCtx.createBuffer(1, whiteNoise.length, sampleRate);
+            audioBuffer.getChannelData(0).set(whiteNoise);
+            bufferSource.buffer = audioBuffer;
+            
+            // 連接至輸出
+            bufferSource.connect(audioCtx.destination);
+            
+            // 設定音量
+            const volumeControl = document.querySelector('input[type="range"]');
+            bufferSource.gainNode = audioCtx.createGain();
+            bufferSource.connect(bufferSource.gainNode);
+            bufferSource.gainNode.connect(audioCtx.destination);
+            changeVolume(volumeControl.value);
+            
+            // 播放音訊
+            bufferSource.loop = true; // 設定為循環播放
+            bufferSource.start();
+        }
+
+        // 函式：播放粉紅噪音
+        function playPinkNoise() {
+            // 生成粉紅噪音資料
+            const lengthInSeconds = 5; // 聲音長度（秒）
+            const sampleRate = 44100; // 取樣率（每秒取樣次數）
+            const pinkNoise = generatePinkNoise(lengthInSeconds, sampleRate);
+            
+            // 將粉紅噪音資料轉換為音訊源節點
+            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            bufferSource = audioCtx.createBufferSource();
+            const audioBuffer = audioCtx.createBuffer(1, pinkNoise.length, sampleRate);
+            audioBuffer.getChannelData(0).set(pinkNoise);
+            bufferSource.buffer = audioBuffer;
+            
+            // 連接至輸出
+            bufferSource.connect(audioCtx.destination);
+            
+            // 設定音量
+            const volumeControl = document.querySelector('input[type="range"]');
+            bufferSource.gainNode = audioCtx.createGain();
+            bufferSource.connect(bufferSource.gainNode);
+            bufferSource.gainNode.connect(audioCtx.destination);
+            changeVolume(volumeControl.value);
+            
+            // 播放音訊
+            bufferSource.loop = true; // 設定為循環播放
+            bufferSource.start();
+        }
+        
+        // 函式：停止播放音訊
+        function stopWhiteNoise() {
+            if (bufferSource) {
+                bufferSource.stop();
+            }
+        }
+        
+        // 函式：變更音量
+        function changeVolume(volume) {
+            if (!bufferSource) return;
+            bufferSource.gainNode.gain.value = volume;
+        }
+
+         
+    </script>
+</body>
+</html>
